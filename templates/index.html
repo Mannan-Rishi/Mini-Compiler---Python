@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mini Compiler Construction IDE</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;700&family=Outfit:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap"
+        rel="stylesheet">
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Custom Style Sheet -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <!-- D3.js for CFG Visualization (served locally) -->
+    <script src="{{ url_for('static', filename='js/d3.min.js') }}"></script>
+    <!-- Monaco Editor Loader -->
+    <script src="https://cdn.jsdelivr.net/npm/monaco-editor@0.44.0/min/vs/loader.js"></script>
+</head>
+
+<body>
+    <!-- 1. Hero Landing Section -->
+    <header class="hero-section">
+        <div class="hero-container">
+            <div class="hero-badge"><i class="fa-solid fa-graduation-cap"></i> Academic Compiler Construction Project
+            </div>
+            <h1 class="hero-title">Mini Compiler IDE</h1>
+            <p class="hero-subtitle">An educational compiler visualization platform transforming C-like source code into
+                optimized accumulator-style assembly with step-by-step intermediate representations.</p>
+            <div class="hero-tech-badges">
+                <span class="tech-badge"><i class="fa-brands fa-python"></i> Python Backend</span>
+                <span class="tech-badge"><i class="fa-solid fa-code"></i> Monaco Editor</span>
+                <span class="tech-badge"><i class="fa-solid fa-chart-simple"></i> D3.js Graphs</span>
+                <span class="tech-badge"><i class="fa-solid fa-gears"></i> TAC Optimization</span>
+            </div>
+            <a href="#ide-workspace" class="btn btn-primary btn-hero"><i class="fa-solid fa-arrow-down"></i> Launch IDE
+                Workspace</a>
+        </div>
+    </header>
+
+    <!-- App Container -->
+    <div class="app-container" id="ide-workspace">
+        <!-- Header Section -->
+        <header class="app-header">
+            <div class="header-title">
+                <i class="fa-solid fa-microchip logo-icon"></i>
+                <div>
+                    <h2>Mini Compiler IDE</h2>
+                    <p class="subtitle">Academic Compiler — Mannan Rishi</p>
+                </div>
+            </div>
+            <div class="header-controls">
+                <div class="control-group">
+                    <label for="sample-select"><i class="fa-solid fa-file-code"></i> Load Sample:</label>
+                    <select id="sample-select">
+                        <option value="" disabled selected>Select a program...</option>
+                    </select>
+                </div>
+                <button id="compile-btn" class="btn btn-primary">
+                    <i class="fa-solid fa-play"></i> Run Compiler
+                </button>
+            </div>
+        </header>
+
+        <!-- Compiler Pipeline Visualization -->
+        <section class="pipeline-section">
+            <div class="pipeline-title"><i class="fa-solid fa-diagram-project"></i> Compiler Compilation Pipeline</div>
+            <div class="pipeline-container">
+                <div class="pipeline-step active" id="step-source">
+                    <span class="step-num">1</span>
+                    <span class="step-name">Source Code</span>
+                </div>
+                <div class="pipeline-arrow"><i class="fa-solid fa-chevron-right"></i></div>
+                <div class="pipeline-step" id="step-lexer">
+                    <span class="step-num">2</span>
+                    <span class="step-name">Lexical Analysis</span>
+                </div>
+                <div class="pipeline-arrow"><i class="fa-solid fa-chevron-right"></i></div>
+                <div class="pipeline-step" id="step-parser">
+                    <span class="step-num">3</span>
+                    <span class="step-name">Syntax Analysis</span>
+                </div>
+                <div class="pipeline-arrow"><i class="fa-solid fa-chevron-right"></i></div>
+                <div class="pipeline-step" id="step-semantic">
+                    <span class="step-num">4</span>
+                    <span class="step-name">Semantic Analysis</span>
+                </div>
+                <div class="pipeline-arrow"><i class="fa-solid fa-chevron-right"></i></div>
+                <div class="pipeline-step" id="step-codegen">
+                    <span class="step-num">5</span>
+                    <span class="step-name">IR (TAC) Gen</span>
+                </div>
+                <div class="pipeline-arrow"><i class="fa-solid fa-chevron-right"></i></div>
+                <div class="pipeline-step" id="step-optimizer">
+                    <span class="step-num">6</span>
+                    <span class="step-name">Optimization</span>
+                </div>
+                <div class="pipeline-arrow"><i class="fa-solid fa-chevron-right"></i></div>
+                <div class="pipeline-step" id="step-target">
+                    <span class="step-num">7</span>
+                    <span class="step-name">Target Code</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- Main Workspace (Editor + Output Panels) -->
+        <main class="app-workspace">
+            <!-- Left Workspace: Code Editor -->
+            <section class="workspace-panel editor-panel card">
+                <div class="panel-header">
+                    <div class="panel-title-text"><i class="fa-solid fa-code"></i> Source Editor (.c)</div>
+                    <div id="status-indicator" class="status-badge status-idle">IDLE</div>
+                </div>
+                <div class="editor-container">
+                    <div id="monaco-container"></div>
+                </div>
+            </section>
+
+            <!-- Right Workspace: Compilation Tabs -->
+            <section class="workspace-panel output-panel card">
+                <div class="tabs-container">
+                    <div class="tabs-header">
+                        <button class="tab-btn active" data-tab="tab-tokens"><i class="fa-solid fa-list-ul"></i>
+                            Tokens</button>
+                        <button class="tab-btn" data-tab="tab-ast"><i class="fa-solid fa-tree"></i> AST</button>
+                        <button class="tab-btn" data-tab="tab-symbol-table"><i class="fa-solid fa-table"></i> Symbol
+                            Table</button>
+                        <button class="tab-btn" data-tab="tab-errors"><i class="fa-solid fa-triangle-exclamation"></i>
+                            Errors</button>
+                        <button class="tab-btn" data-tab="tab-tac"><i class="fa-solid fa-gears"></i> TAC</button>
+                        <button class="tab-btn" data-tab="tab-opt-tac"><i class="fa-solid fa-bolt"></i> Optimized
+                            TAC</button>
+                        <button class="tab-btn" data-tab="tab-target"><i class="fa-solid fa-microchip"></i>
+                            Assembly</button>
+                        <button class="tab-btn" data-tab="tab-cfg"><i class="fa-solid fa-diagram-project"></i>
+                            CFG</button>
+                    </div>
+
+                    <div class="tabs-content">
+                        <!-- Tokens Tab -->
+                        <div class="tab-pane active" id="tab-tokens">
+                            <div class="screenshot-header">
+                                <div class="screenshot-title">Lexical Analysis - Token Listing</div>
+                                <div class="screenshot-time">Compiler Lab Manual Section</div>
+                            </div>
+                            <div class="table-scroll-container">
+                                <table class="data-table" id="tokens-table">
+                                    <thead>
+                                        <tr>
+                                            <th>#</th>
+                                            <th>Token Type</th>
+                                            <th>Lexeme (Value)</th>
+                                            <th>Line</th>
+                                            <th>Column</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td colspan="5" class="text-center text-muted">Run the compiler to see
+                                                tokens.</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!-- AST Tab -->
+                        <div class="tab-pane" id="tab-ast">
+                            <div class="screenshot-header">
+                                <div class="screenshot-title">Syntax Analysis - Abstract Syntax Tree</div>
+                                <div class="screenshot-time">Compiler Lab Manual Section</div>
+                            </div>
+                            <div class="ast-visualizer-container" id="ast-container">
+                                <div class="text-center text-muted pad-20">Run the compiler to visualize the AST.</div>
+                            </div>
+                        </div>
+
+                        <!-- Symbol Table Tab -->
+                        <div class="tab-pane" id="tab-symbol-table">
+                            <div class="screenshot-header">
+                                <div class="screenshot-title">Semantic Analysis - Symbol Table</div>
+                                <div class="screenshot-time">Compiler Lab Manual Section</div>
+                            </div>
+                            <div class="table-scroll-container">
+                                <table class="data-table" id="symbol-table-data">
+                                    <thead>
+                                        <tr>
+                                            <th>Variable Name</th>
+                                            <th>Data Type</th>
+                                            <th>Scope Level</th>
+                                            <th>Declaration Line</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td colspan="4" class="text-center text-muted">Run the compiler to populate
+                                                the Symbol Table.</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!-- Errors Tab -->
+                        <div class="tab-pane" id="tab-errors">
+                            <div class="screenshot-header">
+                                <div class="screenshot-title">Diagnostics - Compiler Error logs</div>
+                                <div class="screenshot-time">Compiler Lab Manual Section</div>
+                            </div>
+                            <div class="errors-list-container" id="errors-container">
+                                <div class="error-group success-group" id="compilation-success-message">
+                                    <div class="error-group-header success-header">
+                                        <i class="fa-solid fa-circle-check"></i> Compilation Successful
+                                    </div>
+                                    <div class="error-group-body">
+                                        No errors or warnings were generated during Lexical, Syntactic, or Semantic
+                                        validation.
+                                    </div>
+                                </div>
+                                <div class="error-group error-card" id="compilation-error-message">
+                                    <div class="error-group-header error-header">
+                                        <i class="fa-solid fa-circle-xmark"></i> Compilation Failed
+                                    </div>
+                                    <div class="error-group-body" id="error-list">
+                                        <!-- Error items are appended here -->
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- TAC Tab -->
+                        <div class="tab-pane" id="tab-tac">
+                            <div class="screenshot-header">
+                                <div class="screenshot-title">Intermediate Code Generation - Three Address Code (TAC)
+                                </div>
+                                <div class="screenshot-time">Compiler Lab Manual Section</div>
+                            </div>
+                            <div class="code-view-container">
+                                <pre><code class="code-block language-tac" id="tac-code">Run the compiler to generate intermediate representation.</code></pre>
+                            </div>
+                        </div>
+
+                        <!-- Optimized TAC Tab -->
+                        <div class="tab-pane" id="tab-opt-tac">
+                            <div class="screenshot-header">
+                                <div class="screenshot-title">Code Optimization - Pre- vs Post-Optimized TAC</div>
+                                <div class="screenshot-time">Compiler Lab Manual Section</div>
+                            </div>
+                            <div class="optimization-grid">
+                                <div class="opt-col">
+                                    <h3>Pre-Optimized TAC</h3>
+                                    <pre><code class="code-block language-tac" id="pre-opt-tac-code">Wait for compiler...</code></pre>
+                                </div>
+                                <div class="opt-col">
+                                    <h3>Optimized TAC</h3>
+                                    <pre><code class="code-block language-tac" id="post-opt-tac-code">Wait for compiler...</code></pre>
+                                </div>
+                            </div>
+                            <div class="opt-logs-container">
+                                <h3><i class="fa-solid fa-list-check"></i> Optimization Log</h3>
+                                <ul id="opt-logs-list" class="opt-logs">
+                                    <li class="text-muted">No optimization logs available.</li>
+                                </ul>
+                            </div>
+                        </div>
+
+                        <!-- Target Code Tab -->
+                        <div class="tab-pane" id="tab-target">
+                            <div class="screenshot-header">
+                                <div class="screenshot-title">Target Code Generation - Pseudo Assembly</div>
+                                <div class="screenshot-time">Compiler Lab Manual Section</div>
+                            </div>
+                            <div class="code-view-container">
+                                <pre><code class="code-block language-assembly" id="target-code-block">Run the compiler to generate target pseudo-assembly code.</code></pre>
+                            </div>
+                        </div>
+
+                        <!-- Control Flow Graph (CFG) Tab -->
+                        <div class="tab-pane" id="tab-cfg">
+                            <div class="screenshot-header">
+                                <div class="screenshot-title">Control Flow Graph - Basic Blocks Analysis</div>
+                                <div class="screenshot-time">Compiler Lab Manual Section</div>
+                            </div>
+                            <div class="cfg-scroll-container">
+                                <div class="cfg-visualizer-container" id="cfg-container">
+                                    <div class="text-center text-muted pad-20">Run the compiler to construct and
+                                        visualize the Control Flow Graph.</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- 2. Interactive Stats Section -->
+    <section class="stats-section">
+        <div class="stats-container">
+            <div class="stat-card">
+                <div class="stat-num" id="stat-stages">7</div>
+                <div class="stat-label">Compiler Stages</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-num" id="stat-samples">11</div>
+                <div class="stat-label">Code Samples</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-num" id="stat-passes">2</div>
+                <div class="stat-label">Optimization Passes</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-num" id="stat-speed">&lt;10ms</div>
+                <div class="stat-label">Execution Time</div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 3. Compiler Specs Section -->
+    <section class="specs-section">
+        <div class="specs-container">
+            <h2 class="section-title">Academic Architecture Features</h2>
+            <div class="specs-grid">
+                <div class="spec-card">
+                    <div class="spec-icon"><i class="fa-solid fa-code"></i></div>
+                    <h3>Function Declarations</h3>
+                    <p>Supports int, float, and void functions with local scoping, formal parameters, and custom return
+                        expression validation.</p>
+                </div>
+                <div class="spec-card">
+                    <div class="spec-icon"><i class="fa-solid fa-magnifying-glass"></i></div>
+                    <h3>Semantic Integrity</h3>
+                    <p>Detects scope violations, duplicate variable declarations, undeclared identifier usage, and
+                        float-to-int type mismatches.</p>
+                </div>
+                <div class="spec-card">
+                    <div class="spec-icon"><i class="fa-solid fa-bolt"></i></div>
+                    <h3>IR Optimizations</h3>
+                    <p>Applies Constant Folding and Propagation, alongside Dead Code Elimination on intermediate
+                        Three-Address Code (TAC).</p>
+                </div>
+                <div class="spec-card">
+                    <div class="spec-icon"><i class="fa-solid fa-diagram-project"></i></div>
+                    <h3>Control Flow CFG</h3>
+                    <p>Identifies basic block leaders, splits block instructions, and renders directed graphs mapping
+                        branch and fallthrough paths.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 4. Footer Section -->
+    <footer class="app-footer">
+        <div class="footer-container">
+            <div class="footer-left">
+                <p><strong>Mini Compiler IDE</strong> — Academic Compiler</p>
+                <p class="footer-sub">Made by: Mannan Rishi</p>
+            </div>
+            <div class="footer-right">
+                <p>&copy; 2026 Mannan Rishi. All rights reserved.</p>
+                <p class="footer-sub">Built with Flask, Monaco Editor, & D3.js</p>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Custom Logic Script -->
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+</body>
+
+</html>
